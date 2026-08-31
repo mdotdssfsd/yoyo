@@ -215,7 +215,44 @@ local function createNavButton(name, iconId, isActive, order)
     Icon.Parent = Button
 
     navButtons[name] = Button
-    return Button
+    
+
+---------------------------------------------------------
+if type(createSectionHeader) == "function" and type(createToggle) == "function" and type(createSlider) == "function" then
+    pcall(function()
+        createSectionHeader("WORLD", "VISUALS", 1)
+        createToggle("WORLD", "World Visuals", false, false, 2, function(state)
+            WorldState.Enabled = state
+            applyWorldVisuals()
+        end)
+        createSlider("WORLD", "Upgrade Scale", 1, 10, 5, true, 3, function(val)
+            WorldState.UpgradeScale = val
+            applyWorldVisuals()
+        end)
+        createSlider("WORLD", "Saturation", -1, 1, 0, false, 4, function(val)
+            WorldState.Saturation = val
+            applyWorldVisuals()
+        end)
+        createSlider("WORLD", "Contrast", -1, 1, 0, false, 5, function(val)
+            WorldState.Contrast = val
+            applyWorldVisuals()
+        end)
+        createSlider("WORLD", "Brightness", -1, 1, 0, false, 6, function(val)
+            WorldState.Brightness = val
+            applyWorldVisuals()
+        end)
+        createToggle("WORLD", "No Trees", false, false, 7, function(state)
+            WorldState.NoTrees = state
+            applyWorldVisuals()
+        end)
+        createToggle("WORLD", "No Grass", false, false, 8, function(state)
+            WorldState.NoGrass = state
+            applyWorldVisuals()
+        end)
+    end)
+end
+
+return Button
 end
 
 -- Profile Card (Bottom Left)
@@ -312,7 +349,7 @@ local tabSubtitles = {
     ["SMOOVE"] = "live community presence",
     ["UTILITY"] = "utility controls",
     ["CONFIGS"] = "configuration profiles",
-    ["FARM"] = "automation options",
+    ["WORLD"] = "environment controls",
     ["SETTINGS"] = "ui settings"
 }
 
@@ -379,7 +416,7 @@ local tabs = {
     {"SMOOVE", "rbxassetid://6031075931"},
     {"UTILITY", "rbxassetid://6031075931"},
     {"CONFIGS", "rbxassetid://6031260812"},
-    {"FARM", "rbxassetid://6034503378"},
+    {"WORLD", "rbxassetid://6034503378"},
     {"SETTINGS", "rbxassetid://6031280882"}
 }
 
@@ -738,272 +775,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
 local Camera = workspace.CurrentCamera
-
-local FeatureState = {
-    PanicMode = false,
-    UIToggleKey = Enum.KeyCode.M,
-    SavedSpawnCFrame = nil,
-    AntiWeaveStun = false,
-    ShowHitbox = true,
-    WeaveGlide = false,
-    NoAttackDelay = false,
-    LegitHitThroughStun = false,
-    WeaveHotkey = nil,
-    AutoStomp = false,
-
-    HitMultiplier = 1,
-    ExtraPunches = 0,
-    StompMultiplier = 1,
-    StompExtraHits = 0,
-
-    KillAura = false,
-    KARange = 15,
-    KASpeed = 5,
-    KALowestHealth = false,
-    KAPredictiveAim = false,
-
-    HitboxSize = 1,
-    PunchSpeed = false,
-    PunchSpeedValue = 1.7,
-    DownHitSpeed = 1,
-    WeaveGlideStrength = 2.2,
-
-    StretchedRes = false,
-    ResolutionScale = 0.8,
-    CustomSens = false,
-    Sensitivity = 1.0,
-
-    HitboxColor = Color3.fromRGB(255, 60, 60)
-}
-
-local hitboxFolder = Instance.new("Folder")
-hitboxFolder.Name = "5SmooveHub_HitboxVisualizer"
-hitboxFolder.Parent = workspace
-
-local targetBoxes = {}
-
-local function getCharacter(player)
-    return player and player.Character
-end
-
-local function getRoot(player)
-    local character = getCharacter(player)
-    return character and character:FindFirstChild("HumanoidRootPart")
-end
-
-local function getHumanoid(player)
-    local character = getCharacter(player)
-    return character and character:FindFirstChildOfClass("Humanoid")
-end
-
-local function isAlive(player)
-    local humanoid = getHumanoid(player)
-    return humanoid and humanoid.Health > 0 and getRoot(player) ~= nil
-end
-
-local function clearTargetBox(player)
-    local data = targetBoxes[player]
-    if data then
-        if data.part then data.part:Destroy() end
-        if data.highlight then data.highlight:Destroy() end
-        targetBoxes[player] = nil
-    end
-end
-
-local function makeHitboxVisual(player)
-    local root = getRoot(player)
-    local character = getCharacter(player)
-    if not root or not character then return nil end
-
-    local part = Instance.new("Part")
-    part.Name = "HitboxVolume_" .. player.UserId
-    part.Anchored = true
-    part.CanCollide = false
-    part.CanTouch = false
-    part.CanQuery = false
-    part.CastShadow = false
-    part.Material = Enum.Material.ForceField
-    part.Transparency = 0.82
-    part.Color = FeatureState.HitboxColor
-    part.Parent = hitboxFolder
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "HitboxOutline_" .. player.UserId
-    highlight.Adornee = character
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.FillTransparency = 1
-    highlight.OutlineTransparency = 0.05
-    highlight.OutlineColor = FeatureState.HitboxColor
-    highlight.Parent = hitboxFolder
-
-    return {
-        part = part,
-        highlight = highlight
-    }
-end
-
-local function updateTargetBox(player)
-    if player == LocalPlayer or not FeatureState.ShowHitbox or not isAlive(player) then
-        clearTargetBox(player)
-        return
-    end
-
-    local root = getRoot(player)
-    local character = getCharacter(player)
-    if not root or not character then
-        clearTargetBox(player)
-        return
-    end
-
-    local data = targetBoxes[player]
-    if not data or not data.part or not data.part.Parent then
-        clearTargetBox(player)
-        data = makeHitboxVisual(player)
-        if not data then return end
-        targetBoxes[player] = data
-    end
-
-    local ok, bodySize = pcall(function()
-        return character:GetExtentsSize()
-    end)
-    if not ok then
-        bodySize = Vector3.new(2, 5, 2)
-    end
-
-    -- Horizontal expansion is stronger than vertical expansion so the
-    -- visual is useful for judging melee reach without becoming enormous.
-    local scale = math.clamp(FeatureState.HitboxSize, 1, 10)
-    local horizontal = 1 + ((scale - 1) * 0.38)
-    local vertical = 1 + ((scale - 1) * 0.22)
-
-    local size = Vector3.new(
-        math.clamp(bodySize.X * horizontal, 2.5, 18),
-        math.clamp(bodySize.Y * vertical, 4, 16),
-        math.clamp(bodySize.Z * horizontal, 2.5, 18)
-    )
-
-    data.part.Size = size
-    data.part.CFrame = root.CFrame * CFrame.new(0, bodySize.Y * 0.05, 0)
-    data.part.Color = FeatureState.HitboxColor
-
-    data.highlight.Adornee = character
-    data.highlight.OutlineColor = FeatureState.HitboxColor
-end
-
-local function refreshTargetBoxes()
-    for _, player in ipairs(Players:GetPlayers()) do
-        updateTargetBox(player)
-    end
-end
-
-local function setCameraSensitivity()
-    -- Client-side mouse-delta sensitivity. This affects scripts that consume
-    -- UserInputService mouse delta; it does not overwrite Roblox's settings UI.
-    local value = math.clamp(tonumber(FeatureState.Sensitivity) or 1, 0, 10)
-    pcall(function()
-        UserInputService.MouseDeltaSensitivity = FeatureState.CustomSens and value or 1
-    end)
-end
-
-local function getAnimationMultiplier()
-    local multiplier = FeatureState.PunchSpeed and FeatureState.PunchSpeedValue or 1
-    return math.clamp(multiplier, 0.05, 20)
-end
-
-local function applyAnimationSpeed(track)
-    if not track then return end
-    pcall(function()
-        track:AdjustSpeed(getAnimationMultiplier())
-    end)
-end
-
-local animationConnection
-local function connectCharacterRuntime(character)
-    if animationConnection then
-        animationConnection:Disconnect()
-        animationConnection = nil
-    end
-
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-
-    animationConnection = humanoid.AnimationPlayed:Connect(function(track)
-        task.defer(function()
-            applyAnimationSpeed(track)
-        end)
-    end)
-
-    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-        applyAnimationSpeed(track)
-    end
-end
-
-local function isAttackAnimation(track)
-    if not track then return false end
-    local name = string.lower(tostring(track.Name or ""))
-    local animation = track.Animation
-    local id = animation and string.lower(tostring(animation.AnimationId or "")) or ""
-    local words = {"punch","attack","hit","jab","swing","kick","combo","m1","melee","strike","stomp","slam","fist","left","right"}
-    for _, word in ipairs(words) do
-        if string.find(name, word, 1, true) or string.find(id, word, 1, true) then
-            return true
-        end
-    end
-    -- Many Roblox games use generic animation names. Combat tracks are often
-    -- short and action-priority, so use that only as a fallback.
-    if track.Priority == Enum.AnimationPriority.Action or track.Priority == Enum.AnimationPriority.Action2
-        or track.Priority == Enum.AnimationPriority.Action3 or track.Priority == Enum.AnimationPriority.Action4 then
-        local length = tonumber(track.Length) or 0
-        if length > 0 and length <= 1.25 then return true end
-    end
-    return false
-end
-
-local animationConnection
-local function connectCharacterRuntime(character)
-    if animationConnection then
-        animationConnection:Disconnect()
-        animationConnection = nil
-    end
-
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then
-        return
-    end
-
-    animationConnection = humanoid.AnimationPlayed:Connect(function(track)
-        task.defer(function()
-            applyAnimationSpeed(track)
-        end)
-    end)
-
-    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-        applyAnimationSpeed(track)
-    end
-end
-
-local function updateAnimationSpeeds()
-    local humanoid = LocalPlayer and getHumanoid(LocalPlayer)
-    if not humanoid then
-        return
-    end
-
-    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-        applyAnimationSpeed(track)
-    end
-end
-
-if LocalPlayer then
-    LocalPlayer.CharacterAdded:Connect(function(character)
-        task.wait(0.2)
-        connectCharacterRuntime(character)
-    end)
-
-    if LocalPlayer.Character then
-        connectCharacterRuntime(LocalPlayer.Character)
-    end
-end
-
+local Lighting = game:GetService("Lighting")
 
 ---------------------------------------------------------
 -- AUTO STOMP / MOBILE BUTTON ADAPTER
@@ -1182,6 +954,7 @@ local function getLowestHealthTarget()
 end
 
 local currentTarget = nil
+local worldUpdateClock = 0
 
 local function updateKillAuraTarget()
     if not FeatureState.KillAura then
@@ -1267,8 +1040,139 @@ RunService.Heartbeat:Connect(function()
     updateKillAuraTarget()
     updateGlide()
     refreshStatus()
+    worldUpdateClock += 1
+    if worldUpdateClock >= 10 then
+        worldUpdateClock = 0
+        if WorldState.enabled then updateWorldVisuals() end
+    end
 end)
 
+
+
+---------------------------------------------------------
+-- WORLD VISUALS
+-- Client-side visual effects only. Safe no-op when a
+-- particular object/effect is unavailable.
+---------------------------------------------------------
+local WorldState = {
+    Enabled = false,
+    UpgradeScale = 5,
+    Saturation = 0,
+    Contrast = 0,
+    Brightness = 0,
+    NoTrees = false,
+    NoGrass = false,
+    SkyPreset = "Midnight",
+}
+
+local worldOriginals = {}
+local worldEffects = {}
+local worldLastScan = 0
+
+local function getWorldScale()
+    return math.clamp(tonumber(WorldState.UpgradeScale) or 5, 1, 10) / 5
+end
+
+local function ensureWorldEffects()
+    local lighting = game:GetService("Lighting")
+
+    local cc = worldEffects.ColorCorrection
+    if not cc or not cc.Parent then
+        cc = lighting:FindFirstChild("5SmooveWorldColorCorrection")
+        if not cc then
+            cc = Instance.new("ColorCorrectionEffect")
+            cc.Name = "5SmooveWorldColorCorrection"
+            cc.Parent = lighting
+        end
+        worldEffects.ColorCorrection = cc
+    end
+
+    local bloom = worldEffects.Bloom
+    if not bloom or not bloom.Parent then
+        bloom = lighting:FindFirstChild("5SmooveWorldBloom")
+        if not bloom then
+            bloom = Instance.new("BloomEffect")
+            bloom.Name = "5SmooveWorldBloom"
+            bloom.Parent = lighting
+        end
+        worldEffects.Bloom = bloom
+    end
+
+    return cc, bloom
+end
+
+local function applyWorldVisuals()
+    local lighting = game:GetService("Lighting")
+
+    if not WorldState.Enabled then
+        local cc = worldEffects.ColorCorrection
+        if cc then cc.Enabled = false end
+        local bloom = worldEffects.Bloom
+        if bloom then bloom.Enabled = false end
+
+        for obj, original in pairs(worldOriginals) do
+            if obj and obj.Parent then
+                pcall(function()
+                    obj.LocalTransparencyModifier = original
+                end)
+            end
+        end
+        return
+    end
+
+    local cc, bloom = ensureWorldEffects()
+    local s = getWorldScale()
+
+    cc.Enabled = true
+    cc.Saturation = math.clamp((tonumber(WorldState.Saturation) or 0) * s, -1, 1)
+    cc.Contrast = math.clamp((tonumber(WorldState.Contrast) or 0) * s, -1, 1)
+    cc.Brightness = math.clamp((tonumber(WorldState.Brightness) or 0) * s, -1, 1)
+
+    bloom.Enabled = true
+    bloom.Intensity = math.clamp(0.05 * s, 0, 1)
+    bloom.Size = 12
+    bloom.Threshold = 1
+
+    local sky = lighting:FindFirstChildOfClass("Sky")
+    if sky then
+        local preset = tostring(WorldState.SkyPreset)
+        local tint = Color3.fromRGB(255, 255, 255)
+        if preset == "Midnight" then
+            tint = Color3.fromRGB(150, 170, 255)
+        elseif preset == "Purple" then
+            tint = Color3.fromRGB(205, 155, 255)
+        elseif preset == "Blue" then
+            tint = Color3.fromRGB(150, 205, 255)
+        elseif preset == "Warm" then
+            tint = Color3.fromRGB(255, 220, 175)
+        end
+        pcall(function() sky.SkyboxTintColor = tint end)
+    end
+
+    local now = os.clock()
+    if now - worldLastScan < 0.5 then return end
+    worldLastScan = now
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        local name = string.lower(obj.Name or "")
+        local isTree = WorldState.NoTrees and (
+            string.find(name, "tree", 1, true) or
+            string.find(name, "bush", 1, true) or
+            string.find(name, "plant", 1, true)
+        )
+        local isGrass = WorldState.NoGrass and (
+            string.find(name, "grass", 1, true) or
+            string.find(name, "foliage", 1, true)
+        )
+
+        if (isTree or isGrass) and obj:IsA("BasePart") then
+            if worldOriginals[obj] == nil then
+                worldOriginals[obj] = obj.LocalTransparencyModifier
+            end
+            obj.LocalTransparencyModifier = 1
+        end
+    end
+end
 
 ---------------------------------------------------------
 -- POPULATING CONFIGS TAB
@@ -1732,6 +1636,92 @@ local defaultPalette = {
 createColorPalette("STATS", "Hitbox Color", defaultPalette, 15, function(color) FeatureState.HitboxColor = color refreshTargetBoxes() end)
 
 ---------------------------------------------------------
+-- POPULATING WORLD TAB
+---------------------------------------------------------
+
+createSectionHeader("WORLD", "ENVIRONMENT", 1)
+createToggle("WORLD", "World Visuals", false, false, 2, function(state)
+    WorldState.enabled = state
+    if state then updateWorldVisuals() else resetWorldVisuals() end
+end)
+createSlider("WORLD", "Upgrade Scale", 1, 10, 5, true, 3, function(val)
+    WorldState.upgradeScale = val
+    if WorldState.enabled then updateWorldVisuals() end
+end)
+
+createSectionHeader("WORLD", "COLOR", 4)
+createSlider("WORLD", "Saturation", -1, 1, 0, false, 5, function(val)
+    WorldState.saturation = val
+    if WorldState.enabled then updateWorldVisuals() end
+end)
+createSlider("WORLD", "Contrast", -1, 1, 0, false, 6, function(val)
+    WorldState.contrast = val
+    if WorldState.enabled then updateWorldVisuals() end
+end)
+createSlider("WORLD", "Brightness", -1, 1, 0, false, 7, function(val)
+    WorldState.brightness = val
+    if WorldState.enabled then updateWorldVisuals() end
+end)
+
+createSectionHeader("WORLD", "CLEANUP", 8)
+createToggle("WORLD", "No Trees", false, false, 9, function(state)
+    WorldState.hideTrees = state
+    if WorldState.enabled then updateWorldVisuals() end
+end)
+createToggle("WORLD", "No Grass", false, false, 10, function(state)
+    WorldState.hideGrass = state
+    if WorldState.enabled then updateWorldVisuals() end
+end)
+
+createSectionHeader("WORLD", "TINT", 11)
+local worldPalette = {
+    Color3.fromRGB(120, 160, 255),
+    Color3.fromRGB(150, 110, 255),
+    Color3.fromRGB(120, 255, 210),
+    Color3.fromRGB(255, 210, 150),
+    Color3.fromRGB(255, 120, 180),
+    Color3.fromRGB(210, 230, 255),
+    Color3.fromRGB(255, 255, 255)
+}
+createColorPalette("WORLD", "World Tint", worldPalette, 12, function(color)
+    WorldState.skyTint = color
+    if WorldState.enabled then updateWorldVisuals() end
+end)
+
+---------------------------------------------------------
+-- WORLD TAB CONTROLS
+---------------------------------------------------------
+createSectionHeader("WORLD", "VISUALS", 1)
+createToggle("WORLD", "World Visuals", false, false, 2, function(state)
+    WorldState.Enabled = state
+    applyWorldVisuals()
+end)
+createSlider("WORLD", "Upgrade Scale", 1, 10, 5, true, 3, function(val)
+    WorldState.UpgradeScale = val
+    applyWorldVisuals()
+end)
+createSlider("WORLD", "Saturation", -1, 1, 0, false, 4, function(val)
+    WorldState.Saturation = val
+    applyWorldVisuals()
+end)
+createSlider("WORLD", "Contrast", -1, 1, 0, false, 5, function(val)
+    WorldState.Contrast = val
+    applyWorldVisuals()
+end)
+createSlider("WORLD", "Brightness", -1, 1, 0, false, 6, function(val)
+    WorldState.Brightness = val
+    applyWorldVisuals()
+end)
+createToggle("WORLD", "No Trees", false, false, 7, function(state)
+    WorldState.NoTrees = state
+    applyWorldVisuals()
+end)
+createToggle("WORLD", "No Grass", false, false, 8, function(state)
+    WorldState.NoGrass = state
+    applyWorldVisuals()
+end)
+
+---------------------------------------------------------
 -- POPULATING UTILITY TAB
 -- Screenshot-inspired utility controls.
 ---------------------------------------------------------
@@ -2154,3 +2144,10 @@ for _, frame in pairs(tabFrames) do
 end
 switchTab("COMBAT")
 updateMobileButton()
+
+pcall(function()
+    game:GetService("Lighting"):FindFirstChild("5SmooveWorldColorCorrection").Enabled = false
+end)
+pcall(function()
+    game:GetService("Lighting"):FindFirstChild("5SmooveWorldBloom").Enabled = false
+end)
