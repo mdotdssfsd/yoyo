@@ -735,6 +735,7 @@ end
 ---------------------------------------------------------
 
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
 local Camera = workspace.CurrentCamera
 
@@ -896,8 +897,12 @@ local function refreshTargetBoxes()
 end
 
 local function setCameraSensitivity()
-    -- Roblox does not expose a public writable Camera sensitivity property.
-    -- Keep the selected value in FeatureState rather than pretending it changed.
+    -- Client-side mouse-delta sensitivity. This affects scripts that consume
+    -- UserInputService mouse delta; it does not overwrite Roblox's settings UI.
+    local value = math.clamp(tonumber(FeatureState.Sensitivity) or 1, 0, 10)
+    pcall(function()
+        UserInputService.MouseDeltaSensitivity = FeatureState.CustomSens and value or 1
+    end)
 end
 
 local function getAnimationMultiplier()
@@ -934,45 +939,24 @@ local function connectCharacterRuntime(character)
 end
 
 local function isAttackAnimation(track)
-    if not track then
-        return false
-    end
-
-    local name = string.lower(track.Name or "")
+    if not track then return false end
+    local name = string.lower(tostring(track.Name or ""))
     local animation = track.Animation
-    local id = animation and string.lower(animation.AnimationId or "") or ""
-
-    -- Only classify likely combat/attack tracks. Movement/idle tracks
-    -- intentionally never match these patterns.
-    local attackWords = {
-        "punch", "attack", "hit", "jab", "swing", "kick",
-        "combo", "m1", "melee", "strike", "stomp", "slam"
-    }
-
-    for _, word in ipairs(attackWords) do
+    local id = animation and string.lower(tostring(animation.AnimationId or "")) or ""
+    local words = {"punch","attack","hit","jab","swing","kick","combo","m1","melee","strike","stomp","slam","fist","left","right"}
+    for _, word in ipairs(words) do
         if string.find(name, word, 1, true) or string.find(id, word, 1, true) then
             return true
         end
     end
-
-    return false
-end
-
-local function getAnimationMultiplier()
-    -- NoAttackDelay intentionally does NOT modify animation speed.
-    -- Server-side attack cooldowns cannot be removed by changing animation playback.
-    local multiplier = FeatureState.PunchSpeed and FeatureState.PunchSpeedValue or 1
-    return math.clamp(multiplier, 0.05, 20)
-end
-
-local function applyAnimationSpeed(track)
-    if not isAttackAnimation(track) then
-        return
+    -- Many Roblox games use generic animation names. Combat tracks are often
+    -- short and action-priority, so use that only as a fallback.
+    if track.Priority == Enum.AnimationPriority.Action or track.Priority == Enum.AnimationPriority.Action2
+        or track.Priority == Enum.AnimationPriority.Action3 or track.Priority == Enum.AnimationPriority.Action4 then
+        local length = tonumber(track.Length) or 0
+        if length > 0 and length <= 1.25 then return true end
     end
-
-    pcall(function()
-        track:AdjustSpeed(getAnimationMultiplier())
-    end)
+    return false
 end
 
 local animationConnection
@@ -1258,7 +1242,25 @@ Players.PlayerRemoving:Connect(function(player)
     clearTargetBox(player)
 end)
 
+
+local originalFOV = nil
+local function updateCameraVisuals()
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+    if originalFOV == nil then originalFOV = camera.FieldOfView end
+    if FeatureState.StretchedRes then
+        -- Roblox LocalScripts cannot change the physical monitor aspect ratio.
+        -- A mild FOV compensation gives a consistent stretched-look approximation.
+        local scale = math.clamp(tonumber(FeatureState.ResolutionScale) or 0.8, 0.1, 1)
+        camera.FieldOfView = math.clamp(originalFOV + ((1 - scale) * 18), 1, 120)
+    else
+        camera.FieldOfView = originalFOV
+    end
+end
+
 RunService.Heartbeat:Connect(function()
+    setCameraSensitivity()
+    updateCameraVisuals()
     updateAutoStomp()
     refreshTargetBoxes()
     updateAnimationSpeeds()
