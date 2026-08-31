@@ -17,7 +17,7 @@ end
 
 -- Theme Colors (Joker Theme: Green, White, Crimson Red, Black)
 local THEME = {
-    Background = Color3.fromRGB(10, 7, 8),
+    Background = Color3.fromRGB(0, 0, 0),
     SidebarBg = Color3.fromRGB(18, 8, 10),
     CardBg = Color3.fromRGB(28, 10, 13),
     AccentGreen = Color3.fromRGB(210, 20, 35),
@@ -215,42 +215,6 @@ local function createNavButton(name, iconId, isActive, order)
     Icon.Parent = Button
 
     navButtons[name] = Button
-    
-
----------------------------------------------------------
-if type(createSectionHeader) == "function" and type(createToggle) == "function" and type(createSlider) == "function" then
-    pcall(function()
-        createSectionHeader("WORLD", "VISUALS", 1)
-        createToggle("WORLD", "World Visuals", false, false, 2, function(state)
-            WorldState.Enabled = state
-            applyWorldVisuals()
-        end)
-        createSlider("WORLD", "Upgrade Scale", 1, 10, 5, true, 3, function(val)
-            WorldState.UpgradeScale = val
-            applyWorldVisuals()
-        end)
-        createSlider("WORLD", "Saturation", -1, 1, 0, false, 4, function(val)
-            WorldState.Saturation = val
-            applyWorldVisuals()
-        end)
-        createSlider("WORLD", "Contrast", -1, 1, 0, false, 5, function(val)
-            WorldState.Contrast = val
-            applyWorldVisuals()
-        end)
-        createSlider("WORLD", "Brightness", -1, 1, 0, false, 6, function(val)
-            WorldState.Brightness = val
-            applyWorldVisuals()
-        end)
-        createToggle("WORLD", "No Trees", false, false, 7, function(state)
-            WorldState.NoTrees = state
-            applyWorldVisuals()
-        end)
-        createToggle("WORLD", "No Grass", false, false, 8, function(state)
-            WorldState.NoGrass = state
-            applyWorldVisuals()
-        end)
-    end)
-end
 
 return Button
 end
@@ -270,7 +234,7 @@ ProfileCorner.Parent = ProfileCard
 local ProfileAvatar = Instance.new("ImageLabel")
 ProfileAvatar.Size = UDim2.new(0, 28, 0, 28)
 ProfileAvatar.Position = UDim2.new(0, 8, 0.5, -14)
-ProfileAvatar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+ProfileAvatar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 ProfileAvatar.Image = LocalPlayer and Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420) or ""
 ProfileAvatar.Parent = ProfileCard
 
@@ -1344,7 +1308,7 @@ ConfigBoxPad.Parent = ConfigBox
 local SaveConfigBtn = Instance.new("TextButton")
 SaveConfigBtn.Size = UDim2.new(0, 90, 0, 30)
 SaveConfigBtn.Position = UDim2.new(1, -102, 0, 54)
-SaveConfigBtn.BackgroundColor3 = Color3.fromRGB(105, 0, 210)
+SaveConfigBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 SaveConfigBtn.BorderSizePixel = 0
 SaveConfigBtn.Text = "SAVE"
 SaveConfigBtn.TextColor3 = THEME.TextPrimary
@@ -1688,36 +1652,11 @@ createColorPalette("WORLD", "World Tint", worldPalette, 12, function(color)
     if WorldState.enabled then updateWorldVisuals() end
 end)
 
----------------------------------------------------------
--- WORLD TAB CONTROLS
+
 ---------------------------------------------------------
 createSectionHeader("WORLD", "VISUALS", 1)
 createToggle("WORLD", "World Visuals", false, false, 2, function(state)
     WorldState.Enabled = state
-    applyWorldVisuals()
-end)
-createSlider("WORLD", "Upgrade Scale", 1, 10, 5, true, 3, function(val)
-    WorldState.UpgradeScale = val
-    applyWorldVisuals()
-end)
-createSlider("WORLD", "Saturation", -1, 1, 0, false, 4, function(val)
-    WorldState.Saturation = val
-    applyWorldVisuals()
-end)
-createSlider("WORLD", "Contrast", -1, 1, 0, false, 5, function(val)
-    WorldState.Contrast = val
-    applyWorldVisuals()
-end)
-createSlider("WORLD", "Brightness", -1, 1, 0, false, 6, function(val)
-    WorldState.Brightness = val
-    applyWorldVisuals()
-end)
-createToggle("WORLD", "No Trees", false, false, 7, function(state)
-    WorldState.NoTrees = state
-    applyWorldVisuals()
-end)
-createToggle("WORLD", "No Grass", false, false, 8, function(state)
-    WorldState.NoGrass = state
     applyWorldVisuals()
 end)
 
@@ -1790,7 +1729,7 @@ LocationPad.Parent = LocationBox
 local TeleportBtn = Instance.new("TextButton")
 TeleportBtn.Size = UDim2.new(0.22, -4, 0, 28)
 TeleportBtn.Position = UDim2.new(0.55, 4, 0.5, -14)
-TeleportBtn.BackgroundColor3 = Color3.fromRGB(105, 0, 210)
+TeleportBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 TeleportBtn.BorderSizePixel = 0
 TeleportBtn.Text = "TELEPORT"
 TeleportBtn.TextColor3 = THEME.TextPrimary
@@ -1945,7 +1884,7 @@ ServerValue.Size = UDim2.new(0.35, 0, 0, 24)
 ServerValue.Position = UDim2.new(0, 140, 0, 26)
 ServerValue.BackgroundTransparency = 1
 ServerValue.Text = "..."
-ServerValue.TextColor3 = Color3.fromRGB(180, 80, 255) -- Purple accent color matching screenshot
+ServerValue.TextColor3 = Color3.fromRGB(255, 255, 255) -- Purple accent color matching screenshot
 ServerValue.Font = Enum.Font.GothamBold
 ServerValue.TextSize = 22
 ServerValue.TextXAlignment = Enum.TextXAlignment.Left
@@ -1955,9 +1894,9 @@ ServerValue.Parent = StatsCard
 local RefreshBtn = Instance.new("TextButton")
 RefreshBtn.Size = UDim2.new(0, 80, 0, 28)
 RefreshBtn.Position = UDim2.new(1, -95, 0.5, -14)
-RefreshBtn.BackgroundColor3 = Color3.fromRGB(30, 26, 38)
+RefreshBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 RefreshBtn.Text = "REFRESH"
-RefreshBtn.TextColor3 = Color3.fromRGB(180, 80, 255)
+RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 RefreshBtn.Font = Enum.Font.GothamBold
 RefreshBtn.TextSize = 9
 RefreshBtn.Parent = StatsCard
@@ -2003,7 +1942,7 @@ ListPadding.Parent = ListScrollView
 local function createUserEntry(player, planType)
     local Entry = Instance.new("Frame")
     Entry.Size = UDim2.new(1, 0, 0, 42)
-    Entry.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+    Entry.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Entry.BorderSizePixel = 0
     Entry.Parent = ListScrollView
 
@@ -2025,7 +1964,7 @@ local function createUserEntry(player, planType)
     local Avatar = Instance.new("ImageLabel")
     Avatar.Size = UDim2.new(0, 26, 0, 26)
     Avatar.Position = UDim2.new(0, 24, 0.5, -13)
-    Avatar.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+    Avatar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Avatar.Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
     Avatar.Parent = Entry
 
@@ -2058,7 +1997,7 @@ local function createUserEntry(player, planType)
     local Badge = Instance.new("Frame")
     Badge.Size = UDim2.new(0, 50, 0, 20)
     Badge.Position = UDim2.new(1, -60, 0.5, -10)
-    Badge.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+    Badge.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Badge.BorderSizePixel = 0
     Badge.Parent = Entry
 
