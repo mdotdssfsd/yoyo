@@ -1,4 +1,4 @@
-
+-- Services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -751,6 +751,8 @@ local FeatureState = {
     AutoStomp = false,
     StompRadius = 15,
     StompMS = 0,
+    StompMultiplier = 1,
+    StompExtraHits = 0,
 
     HitMultiplier = 1,
     ExtraPunches = 0,
@@ -1036,7 +1038,6 @@ local AutoStompState = {
     distance = 0,
     button = nil,
     lastPress = 0,
-    cooldown = 0,
     cycleTarget = nil,
     cycleBusy = false,
 }
@@ -1047,7 +1048,6 @@ stompIndicatorFolder.Name = "5SmooveHub_AutoStompIndicators"
 stompIndicatorFolder.Parent = workspace
 
 local stompIndicators = {}
-local isDownedCharacter
 
 local function clearStompIndicator(player)
     local gui = stompIndicators[player]
@@ -1064,6 +1064,24 @@ local function clearAllStompIndicators()
     end
 end
 
+local function isDownedCharacter(character)
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return false end
+
+    local downedNames = {"Downed", "Down", "Knocked", "KnockedDown", "Ragdoll", "IsDowned", "DownedState"}
+    for _, name in ipairs(downedNames) do
+        local marker = character:FindFirstChild(name)
+        if marker then
+            if marker:IsA("BoolValue") and marker.Value then return true end
+            if (marker:IsA("IntValue") or marker:IsA("NumberValue")) and marker.Value > 0 then return true end
+            if marker:IsA("StringValue") and marker.Value ~= "" then return true end
+        end
+    end
+
+    local state = humanoid:GetState()
+    return state == Enum.HumanoidStateType.Physics or state == Enum.HumanoidStateType.Ragdoll
+end
+
 local function makeStompIndicator(player)
     local root = getRoot(player)
     if not root then return nil end
@@ -1072,7 +1090,7 @@ local function makeStompIndicator(player)
     gui.Name = "AutoStompIndicator_" .. player.UserId
     gui.Adornee = root
     gui.AlwaysOnTop = true
-    gui.Size = UDim2.new(0, 120, 0, 42)
+    gui.Size = UDim2.new(0, 140, 0, 42)
     gui.StudsOffset = Vector3.new(0, 3.2, 0)
     gui.MaxDistance = 250
     gui.Parent = stompIndicatorFolder
@@ -1087,7 +1105,6 @@ local function makeStompIndicator(player)
     text.Font = Enum.Font.GothamBlack
     text.TextSize = 13
     text.Parent = gui
-
     return gui
 end
 
@@ -1104,25 +1121,20 @@ local function updateStompIndicators()
     end
 
     local seen = {}
-
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and isAlive(player) then
             local root = getRoot(player)
             local character = getCharacter(player)
-
             if root and character and isDownedCharacter(character) then
                 local distance = (root.Position - myRoot.Position).Magnitude
-
                 if distance <= FeatureState.StompRadius then
                     seen[player] = true
-
                     local gui = stompIndicators[player]
                     if not gui or not gui.Parent or gui.Adornee ~= root then
                         clearStompIndicator(player)
                         gui = makeStompIndicator(player)
                         stompIndicators[player] = gui
                     end
-
                     if gui then
                         local label = gui:FindFirstChild("IndicatorText")
                         if label then
@@ -1139,98 +1151,49 @@ local function updateStompIndicators()
             end
         end
     end
-
     for player in pairs(stompIndicators) do
-        if not seen[player] then
-            clearStompIndicator(player)
-        end
+        if not seen[player] then clearStompIndicator(player) end
     end
-end
-
-function isDownedCharacter(character)
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then
-        return false
-    end
-
-    -- Support common downed/ragdoll markers used by Roblox games.
-    local downedNames = {
-        "Downed", "Down", "Knocked", "KnockedDown",
-        "Ragdoll", "IsDowned", "DownedState"
-    }
-
-    for _, name in ipairs(downedNames) do
-        local marker = character:FindFirstChild(name)
-        if marker then
-            if marker:IsA("BoolValue") and marker.Value then return true end
-            if marker:IsA("IntValue") or marker:IsA("NumberValue") then
-                if marker.Value > 0 then return true end
-            end
-            if marker:IsA("StringValue") and marker.Value ~= "" then return true end
-        end
-    end
-
-    -- Humanoid states commonly used while a character is physically down.
-    local state = humanoid:GetState()
-    return state == Enum.HumanoidStateType.Physics
-        or state == Enum.HumanoidStateType.Ragdoll
 end
 
 local function findMobileStompButton()
     local playerGui = LocalPlayer and LocalPlayer:FindFirstChildOfClass("PlayerGui")
     if not playerGui then return nil end
-
     for _, obj in ipairs(playerGui:GetDescendants()) do
         if obj:IsA("GuiButton") and obj.Visible then
             local text = string.lower(tostring(obj.Text or ""))
             local name = string.lower(obj.Name or "")
-
-            if string.find(text, "stomp", 1, true)
-                or string.find(name, "stomp", 1, true) then
+            if string.find(text, "stomp", 1, true) or string.find(name, "stomp", 1, true) then
                 return obj
             end
         end
     end
-
     return nil
 end
 
 local function pressMobileStomp()
-    local now = os.clock()
     local stompMS = math.max(0, tonumber(FeatureState.StompMS) or 0)
     local cooldown = stompMS / 1000
-
-    if now - AutoStompState.lastPress < cooldown then
-        return false
-    end
+    local now = os.clock()
+    if cooldown > 0 and now - AutoStompState.lastPress < cooldown then return false end
 
     local button = AutoStompState.button
     if not button or not button.Parent or not button.Visible then
         button = findMobileStompButton()
         AutoStompState.button = button
     end
+    if not button then return false end
 
-    if not button then
-        return false
-    end
-
-    local ok = pcall(function()
-        button:Activate()
-    end)
-
+    local ok = pcall(function() button:Activate() end)
     if ok then
         AutoStompState.lastPress = os.clock()
         return true
     end
-
     return false
 end
 
 local function performStompCycle(target)
-    if not target or AutoStompState.cycleBusy then
-        return
-    end
-
+    if not target or AutoStompState.cycleBusy then return end
     AutoStompState.cycleBusy = true
 
     local multiplier = math.max(1, math.floor(tonumber(FeatureState.StompMultiplier) or 1))
@@ -1239,22 +1202,12 @@ local function performStompCycle(target)
     local stompMS = math.max(0, tonumber(FeatureState.StompMS) or 0)
 
     for i = 1, totalPresses do
-        if not FeatureState.AutoStomp then
-            break
-        end
-
+        if not FeatureState.AutoStomp then break end
         local character = getCharacter(target)
-        if not character or not isAlive(target) or not isDownedCharacter(character) then
-            break
-        end
-
+        if not character or not isAlive(target) or not isDownedCharacter(character) then break end
         pressMobileStomp()
-
-        if i < totalPresses and stompMS > 0 then
-            task.wait(stompMS / 1000)
-        end
+        if i < totalPresses and stompMS > 0 then task.wait(stompMS / 1000) end
     end
-
     AutoStompState.cycleBusy = false
 end
 
@@ -1277,11 +1230,9 @@ local function updateAutoStomp()
         if player ~= LocalPlayer and isAlive(player) then
             local root = getRoot(player)
             local character = getCharacter(player)
-
             if root and character and isDownedCharacter(character) then
                 local distance = (root.Position - myRoot.Position).Magnitude
-                if distance <= FeatureState.StompRadius
-                    and (not closestDistance or distance < closestDistance) then
+                if distance <= FeatureState.StompRadius and (not closestDistance or distance < closestDistance) then
                     closest = player
                     closestDistance = distance
                 end
@@ -1408,9 +1359,7 @@ end)
 Players.PlayerRemoving:Connect(function(player)
     clearTargetBox(player)
     clearStompIndicator(player)
-    if AutoStompState.cycleTarget == player then
-        AutoStompState.cycleTarget = nil
-    end
+    if AutoStompState.cycleTarget == player then AutoStompState.cycleTarget = nil end
 end)
 
 RunService.Heartbeat:Connect(function()
@@ -1838,12 +1787,8 @@ createToggle("COMBAT", "Auto Stomp", false, false, 9, function(state)
         clearAllStompIndicators()
     end
 end)
-createSlider("COMBAT", "Stomp Radius", 1, 50, 15, false, 10, function(val)
-    FeatureState.StompRadius = val
-end)
-createSlider("COMBAT", "Stomp MS", 0, 1000, 0, false, 11, function(val)
-    FeatureState.StompMS = val
-end)
+createSlider("COMBAT", "Stomp Radius", 1, 50, 15, false, 10, function(val) FeatureState.StompRadius = val end)
+createSlider("COMBAT", "Stomp MS", 0, 1000, 0, false, 11, function(val) FeatureState.StompMS = val end)
 
 createSectionHeader("COMBAT", "MULTIPLIERS", 12)
 createSlider("COMBAT", "Hit Multiplier", 1, 10, 1, true, 13, function(val) FeatureState.HitMultiplier = val end)
