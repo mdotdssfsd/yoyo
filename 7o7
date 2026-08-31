@@ -1,3 +1,9 @@
+--[[
+    MYSTERIOUS MIDNIGHT UI
+    Uses standard Roblox GUI primitives (ScreenGui/Frame/TextLabel/TextButton/
+    UIStroke/UICorner/etc.) and does not require custom fonts, external assets,
+    or unsupported UI APIs.
+]]
 -- Services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -1136,7 +1142,7 @@ local function applyWorldVisuals()
     local sky = lighting:FindFirstChildOfClass("Sky")
     if sky then
         local preset = tostring(WorldState.SkyPreset)
-        local tint = Color3.fromRGB(255, 255, 255)
+        local tint = Color3.fromRGB(205, 205, 220)
         if preset == "Midnight" then
             tint = Color3.fromRGB(150, 170, 255)
         elseif preset == "Purple" then
@@ -1625,13 +1631,13 @@ createSlider("STATS", "Sensitivity", 0.1, 10, 1.0, false, 13, function(val) Feat
 
 createSectionHeader("STATS", "VISUALS", 14)
 local defaultPalette = {
-    Color3.fromRGB(255, 60, 60),
-    Color3.fromRGB(60, 255, 60),
+    Color3.fromRGB(110, 90, 160),
+    Color3.fromRGB(80, 150, 190),
     Color3.fromRGB(60, 150, 255),
-    Color3.fromRGB(255, 230, 60),
-    Color3.fromRGB(180, 60, 255),
-    Color3.fromRGB(255, 255, 255),
-    Color3.fromRGB(20, 20, 20)
+    Color3.fromRGB(165, 120, 210),
+    Color3.fromRGB(125, 95, 180),
+    Color3.fromRGB(205, 205, 220),
+    Color3.fromRGB(12, 12, 20)
 }
 createColorPalette("STATS", "Hitbox Color", defaultPalette, 15, function(color) FeatureState.HitboxColor = color refreshTargetBoxes() end)
 
@@ -1681,7 +1687,7 @@ local worldPalette = {
     Color3.fromRGB(255, 210, 150),
     Color3.fromRGB(255, 120, 180),
     Color3.fromRGB(210, 230, 255),
-    Color3.fromRGB(255, 255, 255)
+    Color3.fromRGB(205, 205, 220)
 }
 createColorPalette("WORLD", "World Tint", worldPalette, 12, function(color)
     WorldState.skyTint = color
