@@ -13,7 +13,7 @@ local isWhitelistedUser = false
 if LocalPlayer then
     local username = LocalPlayer.Name:lower()
 
-    if username == "socertempr" or username == "kaidkln" then
+    if username == "R50sevyn" or username == "kaidkln" then
         isWhitelistedUser = true
     end
 end
