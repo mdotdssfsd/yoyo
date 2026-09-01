@@ -7,13 +7,13 @@ local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Check Owner/Co-owner for Auto-Premium Unlock
+-- Check Owner/Co-owner/Premium User for Auto-Premium Unlock
 local isWhitelistedUser = false
 
 if LocalPlayer then
     local username = LocalPlayer.Name:lower()
 
-    if username == "R50sevyn" or username == "kaidkln" then
+    if username == "socertempr" or username == "kaidkln" or username == "r50sevyn" then
         isWhitelistedUser = true
     end
 end
@@ -228,7 +228,7 @@ local ProfileName = Instance.new("TextLabel")
 ProfileName.Size = UDim2.new(1, -45, 0, 14)
 ProfileName.Position = UDim2.new(0, 42, 0, 8)
 ProfileName.BackgroundTransparency = 1
-ProfileName.Text = LocalPlayer.DisplayName
+ProfileName.Text = LocalPlayer and LocalPlayer.DisplayName or "User"
 ProfileName.TextColor3 = THEME.TextPrimary
 ProfileName.Font = Enum.Font.GothamBold
 ProfileName.TextSize = 10
@@ -239,7 +239,7 @@ local ProfileTag = Instance.new("TextLabel")
 ProfileTag.Size = UDim2.new(1, -45, 0, 14)
 ProfileTag.Position = UDim2.new(0, 42, 0, 22)
 ProfileTag.BackgroundTransparency = 1
-ProfileTag.Text = "@" .. LocalPlayer.Name
+ProfileTag.Text = "@" .. (LocalPlayer and LocalPlayer.Name or "User")
 ProfileTag.TextColor3 = THEME.TextSecondary
 ProfileTag.Font = Enum.Font.Gotham
 ProfileTag.TextSize = 9
@@ -256,11 +256,11 @@ Content.Parent = MainFrame
 
 -- Status
 local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(0, 60, 0, 20)
-StatusLabel.Position = UDim2.new(1, -70, 0, 10)
+StatusLabel.Size = UDim2.new(0, 80, 0, 20)
+StatusLabel.Position = UDim2.new(1, -90, 0, 10)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "● READY"
-StatusLabel.TextColor3 = THEME.AccentGreen
+StatusLabel.Text = isWhitelistedUser and "● PREMIUM" or "● READY"
+StatusLabel.TextColor3 = isWhitelistedUser and Color3.fromRGB(255, 215, 0) or THEME.AccentGreen
 StatusLabel.Font = Enum.Font.GothamBold
 StatusLabel.TextSize = 9
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -806,8 +806,6 @@ end
 -- FUNCTIONAL FEATURE RUNTIME
 ---------------------------------------------------------
 
-local Camera = workspace.CurrentCamera
-
 local FeatureState = {
     AntiWeaveStun = false,
     ShowHitbox = true,
@@ -843,7 +841,7 @@ local FeatureState = {
 }
 
 ---------------------------------------------------------
--- NEW EXPANDING PART HITBOX SYSTEM
+-- EXPANDING PART HITBOX SYSTEM
 ---------------------------------------------------------
 
 local function getCharacter(player)
@@ -899,10 +897,6 @@ end
 ---------------------------------------------------------
 -- ANIMATION
 ---------------------------------------------------------
-
-local function setCameraSensitivity()
-    -- Roblox does not expose a public writable camera sensitivity property.
-end
 
 local function getAnimationMultiplier()
     local multiplier =
@@ -1065,7 +1059,7 @@ local function updateKillAuraTarget()
 end
 
 ---------------------------------------------------------
--- GLIDE
+-- GLIDE & RUNTIME LOOPS
 ---------------------------------------------------------
 
 local function updateGlide()
@@ -1076,737 +1070,100 @@ local function updateGlide()
     local root = getRoot(LocalPlayer)
     local humanoid = getHumanoid(LocalPlayer)
 
-    if not root
-        or not humanoid
-        or humanoid.Health <= 0 then
-
+    if not root or not humanoid or humanoid.Health <= 0 then
         return
     end
 
-    local move = humanoid.MoveDirection
-
-    if move.Magnitude > 0 then
-        local strength =
-            math.clamp(
-                FeatureState.WeaveGlideStrength,
-                1,
-                10
-            )
-
-        root.AssemblyLinearVelocity = Vector3.new(
-            move.X * 16 * strength,
-            root.AssemblyLinearVelocity.Y,
-            move.Z * 16 * strength
-        )
+    if humanoid.MoveDirection.Magnitude > 0 then
+        root.CFrame = root.CFrame + (humanoid.MoveDirection * (FeatureState.WeaveGlideStrength * 0.1))
     end
 end
 
-local function refreshStatus()
-    if not StatusLabel or not StatusLabel.Parent then
-        return
-    end
-
-    if FeatureState.KillAura and currentTarget then
-        StatusLabel.Text = "● TARGET"
-    elseif FeatureState.WeaveGlide then
-        StatusLabel.Text = "● GLIDE"
-    else
-        StatusLabel.Text = "● READY"
-    end
-end
-
----------------------------------------------------------
--- PLAYER CONNECTIONS
----------------------------------------------------------
-
+-- Render Stepped Runtime Execution
 RunService.RenderStepped:Connect(function()
     updateHitboxes()
-end)
-
-RunService.Heartbeat:Connect(function()
-    updateAnimationSpeeds()
     updateKillAuraTarget()
     updateGlide()
-    refreshStatus()
 end)
 
 ---------------------------------------------------------
+-- POPULATE TAB UI ELEMENTS
+---------------------------------------------------------
+
 -- COMBAT TAB
----------------------------------------------------------
-
-createSectionHeader("COMBAT", "CORE", 1)
-
-createToggle(
-    "COMBAT",
-    "Anti Weave Stun",
-    false,
-    false,
-    2,
-    function(state)
-        FeatureState.AntiWeaveStun = state
-    end
-)
-
-createToggle(
-    "COMBAT",
-    "Show Hitbox",
-    true,
-    false,
-    3,
-    function(state)
-        FeatureState.ShowHitbox = state
-    end
-)
-
-createToggle(
-    "COMBAT",
-    "Weave Glide",
-    false,
-    false,
-    4,
-    function(state)
-        FeatureState.WeaveGlide = state
-    end
-)
-
-createToggle(
-    "COMBAT",
-    "No Attack Delay",
-    false,
-    true,
-    5,
-    function(state)
-        FeatureState.NoAttackDelay = state
-    end
-)
-
-createToggle(
-    "COMBAT",
-    "Legit Hit Through Stun",
-    false,
-    true,
-    6,
-    function(state)
-        FeatureState.LegitHitThroughStun = state
-    end
-)
-
-createKeybind(
-    "COMBAT",
-    "Weave Hotkey",
-    "unbound",
-    7,
-    function(key)
-        FeatureState.WeaveHotkey = key
-    end
-)
-
-createSectionHeader("COMBAT", "STOMP", 8)
-
-createToggle(
-    "COMBAT",
-    "Auto Stomp",
-    false,
-    false,
-    9,
-    function(state)
-        FeatureState.AutoStomp = state
-    end
-)
-
-createSectionHeader("COMBAT", "MULTIPLIERS", 10)
-
-createSlider(
-    "COMBAT",
-    "Hit Multiplier",
-    1,
-    10,
-    1,
-    true,
-    11,
-    function(val)
-        FeatureState.HitMultiplier = val
-    end
-)
-
-createSlider(
-    "COMBAT",
-    "Extra Punches",
-    0,
-    10,
-    0,
-    true,
-    12,
-    function(val)
-        FeatureState.ExtraPunches = val
-    end
-)
-
-createSlider(
-    "COMBAT",
-    "Stomp Multiplier",
-    1,
-    10,
-    1,
-    true,
-    13,
-    function(val)
-        FeatureState.StompMultiplier = val
-    end
-)
-
-createSlider(
-    "COMBAT",
-    "Stomp Extra Hits",
-    0,
-    10,
-    0,
-    true,
-    14,
-    function(val)
-        FeatureState.StompExtraHits = val
-    end
-)
-
-createSectionHeader("COMBAT", "KILL AURA", 15)
-
-createToggle(
-    "COMBAT",
-    "Kill Aura",
-    false,
-    true,
-    16,
-    function(state)
-        FeatureState.KillAura = state
-    end
-)
-
-createSlider(
-    "COMBAT",
-    "KA Range",
-    1,
-    50,
-    15,
-    true,
-    17,
-    function(val)
-        FeatureState.KARange = val
-    end
-)
-
-createSlider(
-    "COMBAT",
-    "KA Speed",
-    1,
-    20,
-    5,
-    true,
-    18,
-    function(val)
-        FeatureState.KASpeed = val
-    end
-)
-
-createToggle(
-    "COMBAT",
-    "KA Lowest Health",
-    false,
-    true,
-    19,
-    function(state)
-        FeatureState.KALowestHealth = state
-    end
-)
-
-createToggle(
-    "COMBAT",
-    "KA Predictive Aim",
-    false,
-    true,
-    20,
-    function(state)
-        FeatureState.KAPredictiveAim = state
-    end
-)
-
----------------------------------------------------------
--- STATS TAB
----------------------------------------------------------
-
-createSectionHeader("STATS", "PLAYER", 1)
-
-createSlider(
-    "STATS",
-    "Hitbox Size",
-    1,
-    10,
-    1,
-    false,
-    2,
-    function(val)
-        FeatureState.HitboxSize = val
-    end
-)
-
-createToggle(
-    "STATS",
-    "Punch Speed",
-    false,
-    false,
-    3,
-    function(state)
-        FeatureState.PunchSpeed = state
-    end
-)
-
-createSlider(
-    "STATS",
-    "Punch Speed Value",
-    1,
-    10,
-    1.7,
-    false,
-    4,
-    function(val)
-        FeatureState.PunchSpeedValue = val
-    end
-)
-
-createSlider(
-    "STATS",
-    "Down Hit Speed",
-    1,
-    10,
-    1,
-    true,
-    7,
-    function(val)
-        FeatureState.DownHitSpeed = val
-    end
-)
-
-createSlider(
-    "STATS",
-    "Weave Glide Strength",
-    1,
-    10,
-    2.2,
-    false,
-    8,
-    function(val)
-        FeatureState.WeaveGlideStrength = val
-    end
-)
-
-createSectionHeader("STATS", "CAMERA", 9)
-
-createToggle(
-    "STATS",
-    "Stretched Res",
-    false,
-    false,
-    10,
-    function(state)
-        FeatureState.StretchedRes = state
-    end
-)
-
-createSlider(
-    "STATS",
-    "Resolution Scale",
-    0.1,
-    1.0,
-    0.8,
-    false,
-    11,
-    function(val)
-        FeatureState.ResolutionScale = val
-    end
-)
-
-createToggle(
-    "STATS",
-    "Custom Sens",
-    false,
-    false,
-    12,
-    function(state)
-        FeatureState.CustomSens = state
-        setCameraSensitivity()
-    end
-)
-
-createSlider(
-    "STATS",
-    "Sensitivity",
-    0.1,
-    10,
-    1.0,
-    false,
-    13,
-    function(val)
-        FeatureState.Sensitivity = val
-        setCameraSensitivity()
-    end
-)
-
-createSectionHeader("STATS", "VISUALS", 14)
-
-local defaultPalette = {
+createSectionHeader("COMBAT", "MAIN FEATURES", 1)
+createToggle("COMBAT", "Show Expand Hitbox", FeatureState.ShowHitbox, false, 2, function(val)
+    FeatureState.ShowHitbox = val
+    updateHitboxes()
+end)
+createSlider("COMBAT", "Hitbox Size Multiplier", 1, 10, FeatureState.HitboxSize, false, 3, function(val)
+    FeatureState.HitboxSize = val
+    updateHitboxes()
+end)
+createColorPalette("COMBAT", "Hitbox Color", {
     Color3.fromRGB(255, 60, 60),
     Color3.fromRGB(60, 255, 60),
     Color3.fromRGB(60, 150, 255),
-    Color3.fromRGB(255, 230, 60),
-    Color3.fromRGB(180, 60, 255),
-    Color3.fromRGB(255, 255, 255),
-    Color3.fromRGB(20, 20, 20)
-}
-
-createColorPalette(
-    "STATS",
-    "Hitbox Color",
-    defaultPalette,
-    15,
-    function(color)
-        FeatureState.HitboxColor = color
-    end
-)
-
----------------------------------------------------------
--- UTILITY TAB
----------------------------------------------------------
-
-createSectionHeader("UTILITY", "GUI CONTROLS", 1)
-
-createActionButton(
-    "UTILITY",
-    "Unload GUI",
-    THEME.CardBg,
-    2,
-    function()
-        FeatureState.ShowHitbox = false
-
-        for _, plr in ipairs(Players:GetPlayers()) do
-            local root = getRoot(plr)
-            if root then
-                root.Size = Vector3.new(2, 2, 1)
-                root.Transparency = 1
-            end
-        end
-
-        if animationConnection then
-            animationConnection:Disconnect()
-            animationConnection = nil
-        end
-
-        ScreenGui:Destroy()
-    end
-)
-
-createActionButton(
-    "UTILITY",
-    "Safe Kill Switch",
-    THEME.AccentRed,
-    3,
-    function()
-        ScreenGui:Destroy()
-
-        if LocalPlayer and LocalPlayer.Character then
-            local humanoid =
-                LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-
-            if humanoid then
-                humanoid.Health = 0
-            end
-        end
-    end
-)
-
----------------------------------------------------------
--- SMOOVE TAB
----------------------------------------------------------
-
-local smooveTab = tabFrames["SMOOVE"]
-
-createSectionHeader("SMOOVE", "LIVE PRESENCE", 1)
-
-local StatsCard = Instance.new("Frame")
-StatsCard.Name = "StatsCard"
-StatsCard.Size = UDim2.new(1, 0, 0, 75)
-StatsCard.BackgroundColor3 = THEME.CardBg
-StatsCard.BorderSizePixel = 0
-StatsCard.LayoutOrder = 2
-StatsCard.Parent = smooveTab
-
-local StatsCorner = Instance.new("UICorner")
-StatsCorner.CornerRadius = UDim.new(0, 8)
-StatsCorner.Parent = StatsCard
-
-local GlobalTitle = Instance.new("TextLabel")
-GlobalTitle.Size = UDim2.new(0.35, 0, 0, 12)
-GlobalTitle.Position = UDim2.new(0, 15, 0, 12)
-GlobalTitle.BackgroundTransparency = 1
-GlobalTitle.Text = "GLOBAL ACTIVE"
-GlobalTitle.TextColor3 = THEME.TextSecondary
-GlobalTitle.Font = Enum.Font.GothamBold
-GlobalTitle.TextSize = 8
-GlobalTitle.TextXAlignment = Enum.TextXAlignment.Left
-GlobalTitle.Parent = StatsCard
-
-local GlobalValue = Instance.new("TextLabel")
-GlobalValue.Size = UDim2.new(0.35, 0, 0, 24)
-GlobalValue.Position = UDim2.new(0, 15, 0, 26)
-GlobalValue.BackgroundTransparency = 1
-GlobalValue.Text = "..."
-GlobalValue.TextColor3 = THEME.TextPrimary
-GlobalValue.Font = Enum.Font.GothamBold
-GlobalValue.TextSize = 22
-GlobalValue.TextXAlignment = Enum.TextXAlignment.Left
-GlobalValue.Parent = StatsCard
-
-local LiveIndicator = Instance.new("TextLabel")
-LiveIndicator.Size = UDim2.new(0.35, 0, 0, 12)
-LiveIndicator.Position = UDim2.new(0, 15, 0, 52)
-LiveIndicator.BackgroundTransparency = 1
-LiveIndicator.Text = "● LIVE"
-LiveIndicator.TextColor3 = THEME.AccentGreen
-LiveIndicator.Font = Enum.Font.GothamBold
-LiveIndicator.TextSize = 8
-LiveIndicator.TextXAlignment = Enum.TextXAlignment.Left
-LiveIndicator.Parent = StatsCard
-
-local ServerTitle = Instance.new("TextLabel")
-ServerTitle.Size = UDim2.new(0.35, 0, 0, 12)
-ServerTitle.Position = UDim2.new(0, 140, 0, 12)
-ServerTitle.BackgroundTransparency = 1
-ServerTitle.Text = "THIS SERVER"
-ServerTitle.TextColor3 = THEME.TextSecondary
-ServerTitle.Font = Enum.Font.GothamBold
-ServerTitle.TextSize = 8
-ServerTitle.TextXAlignment = Enum.TextXAlignment.Left
-ServerTitle.Parent = StatsCard
-
-local ServerValue = Instance.new("TextLabel")
-ServerValue.Size = UDim2.new(0.35, 0, 0, 24)
-ServerValue.Position = UDim2.new(0, 140, 0, 26)
-ServerValue.BackgroundTransparency = 1
-ServerValue.Text = "..."
-ServerValue.TextColor3 = Color3.fromRGB(180, 80, 255)
-ServerValue.Font = Enum.Font.GothamBold
-ServerValue.TextSize = 22
-ServerValue.TextXAlignment = Enum.TextXAlignment.Left
-ServerValue.Parent = StatsCard
-
-local RefreshBtn = Instance.new("TextButton")
-RefreshBtn.Size = UDim2.new(0, 80, 0, 28)
-RefreshBtn.Position = UDim2.new(1, -95, 0.5, -14)
-RefreshBtn.BackgroundColor3 = Color3.fromRGB(30, 26, 38)
-RefreshBtn.Text = "REFRESH"
-RefreshBtn.TextColor3 = Color3.fromRGB(180, 80, 255)
-RefreshBtn.Font = Enum.Font.GothamBold
-RefreshBtn.TextSize = 9
-RefreshBtn.Parent = StatsCard
-
-local RefreshCorner = Instance.new("UICorner")
-RefreshCorner.CornerRadius = UDim.new(0, 6)
-RefreshCorner.Parent = RefreshBtn
-
--- User List
-local UserListFrame = Instance.new("Frame")
-UserListFrame.Name = "UserListFrame"
-UserListFrame.Size = UDim2.new(1, 0, 0, 210)
-UserListFrame.BackgroundColor3 = THEME.CardBg
-UserListFrame.BorderSizePixel = 0
-UserListFrame.LayoutOrder = 3
-UserListFrame.Parent = smooveTab
-
-local ListCorner = Instance.new("UICorner")
-ListCorner.CornerRadius = UDim.new(0, 8)
-ListCorner.Parent = UserListFrame
-
-local ListScrollView = Instance.new("ScrollingFrame")
-ListScrollView.Size = UDim2.new(1, 0, 1, 0)
-ListScrollView.BackgroundTransparency = 1
-ListScrollView.BorderSizePixel = 0
-ListScrollView.ScrollBarThickness = 3
-ListScrollView.ScrollBarImageColor3 = THEME.AccentGreen
-ListScrollView.Parent = UserListFrame
-
-local ListLayout = Instance.new("UIListLayout")
-ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ListLayout.Padding = UDim.new(0, 6)
-ListLayout.Parent = ListScrollView
-
-local ListPadding = Instance.new("UIPadding")
-ListPadding.PaddingTop = UDim.new(0, 8)
-ListPadding.PaddingLeft = UDim.new(0, 8)
-ListPadding.PaddingRight = UDim.new(0, 8)
-ListPadding.PaddingBottom = UDim.new(0, 8)
-ListPadding.Parent = ListScrollView
-
-local function createUserEntry(player, planType)
-    local Entry = Instance.new("Frame")
-    Entry.Size = UDim2.new(1, 0, 0, 42)
-    Entry.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-    Entry.BorderSizePixel = 0
-    Entry.Parent = ListScrollView
-
-    local EntryCorner = Instance.new("UICorner")
-    EntryCorner.CornerRadius = UDim.new(0, 6)
-    EntryCorner.Parent = Entry
-
-    local Dot = Instance.new("Frame")
-    Dot.Size = UDim2.new(0, 6, 0, 6)
-    Dot.Position = UDim2.new(0, 10, 0.5, -3)
-    Dot.BackgroundColor3 = THEME.AccentGreen
-    Dot.BorderSizePixel = 0
-    Dot.Parent = Entry
-
-    local DotCorner = Instance.new("UICorner")
-    DotCorner.CornerRadius = UDim.new(1, 0)
-    DotCorner.Parent = Dot
-
-    local Avatar = Instance.new("ImageLabel")
-    Avatar.Size = UDim2.new(0, 26, 0, 26)
-    Avatar.Position = UDim2.new(0, 24, 0.5, -13)
-    Avatar.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
-
-    local success, image =
-        pcall(function()
-            return Players:GetUserThumbnailAsync(
-                player.UserId,
-                Enum.ThumbnailType.HeadShot,
-                Enum.ThumbnailSize.Size420x420
-            )
-        end)
-
-    Avatar.Image = success and image or ""
-    Avatar.Parent = Entry
-
-    local AvatarCorner = Instance.new("UICorner")
-    AvatarCorner.CornerRadius = UDim.new(1, 0)
-    AvatarCorner.Parent = Avatar
-
-    local NameLabel = Instance.new("TextLabel")
-    NameLabel.Size = UDim2.new(0.5, 0, 0, 14)
-    NameLabel.Position = UDim2.new(0, 58, 0, 7)
-    NameLabel.BackgroundTransparency = 1
-    NameLabel.Text = player.DisplayName
-    NameLabel.TextColor3 = THEME.TextPrimary
-    NameLabel.Font = Enum.Font.GothamBold
-    NameLabel.TextSize = 10
-    NameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    NameLabel.Parent = Entry
-
-    local TagLabel = Instance.new("TextLabel")
-    TagLabel.Size = UDim2.new(0.5, 0, 0, 12)
-    TagLabel.Position = UDim2.new(0, 58, 0, 21)
-    TagLabel.BackgroundTransparency = 1
-    TagLabel.Text = "@" .. player.Name
-    TagLabel.TextColor3 = THEME.TextSecondary
-    TagLabel.Font = Enum.Font.Gotham
-    TagLabel.TextSize = 9
-    TagLabel.TextXAlignment = Enum.TextXAlignment.Left
-    TagLabel.Parent = Entry
-
-    local Badge = Instance.new("Frame")
-    Badge.Size = UDim2.new(0, 50, 0, 20)
-    Badge.Position = UDim2.new(1, -60, 0.5, -10)
-    Badge.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
-    Badge.BorderSizePixel = 0
-    Badge.Parent = Entry
-
-    local BadgeCorner = Instance.new("UICorner")
-    BadgeCorner.CornerRadius = UDim.new(0, 4)
-    BadgeCorner.Parent = Badge
-
-    local BadgeText = Instance.new("TextLabel")
-    BadgeText.Size = UDim2.new(1, 0, 1, 0)
-    BadgeText.BackgroundTransparency = 1
-    BadgeText.Text = planType
-    BadgeText.TextColor3 =
-        (planType == "PREMIUM" or planType == "OWNER")
-        and THEME.AccentRed
-        or THEME.TextSecondary
-
-    BadgeText.Font = Enum.Font.GothamBold
-    BadgeText.TextSize = 8
-    BadgeText.Parent = Badge
-end
-
----------------------------------------------------------
--- LIVE PRESENCE
----------------------------------------------------------
-
-local function refreshLivePresence()
-    for _, child in ipairs(ListScrollView:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
-        end
-    end
-
-    local currentPlayers = Players:GetPlayers()
-
-    ServerValue.Text = tostring(#currentPlayers)
-
-    for _, plr in ipairs(currentPlayers) do
-        local plan = "FREE"
-        local lowerName = plr.Name:lower()
-
-        if lowerName == "socertempr"
-            or lowerName == "kaidkln" then
-
-            plan = "OWNER"
-        end
-
-        createUserEntry(plr, plan)
-    end
-
-    task.spawn(function()
-        pcall(function()
-            if request
-                or http_request
-                or (syn and syn.request) then
-
-                local req =
-                    request
-                    or http_request
-                    or syn.request
-
-                req({
-                    Url = "https://httpbin.org/get",
-                    Method = "GET"
-                })
-            end
-        end)
-
-        GlobalValue.Text = tostring(#currentPlayers)
-    end)
-end
-
-RefreshBtn.MouseButton1Click:Connect(refreshLivePresence)
-
-refreshLivePresence()
-
----------------------------------------------------------
--- WEAVE HOTKEY
----------------------------------------------------------
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then
-        return
-    end
-
-    if FeatureState.WeaveHotkey
-        and input.KeyCode == FeatureState.WeaveHotkey then
-
-        FeatureState.WeaveGlide =
-            not FeatureState.WeaveGlide
-    end
+    Color3.fromRGB(255, 255, 60)
+}, 4, function(color)
+    FeatureState.HitboxColor = color
+    updateHitboxes()
 end)
 
----------------------------------------------------------
--- DEFAULT TAB
----------------------------------------------------------
+createSectionHeader("COMBAT", "PREMIUM EXCLUSIVES", 5)
+createToggle("COMBAT", "Anti-Weave Stun", FeatureState.AntiWeaveStun, true, 6, function(val)
+    FeatureState.AntiWeaveStun = val
+end)
+createToggle("COMBAT", "Legit Hit Through Stun", FeatureState.LegitHitThroughStun, true, 7, function(val)
+    FeatureState.LegitHitThroughStun = val
+end)
+createSlider("COMBAT", "Extra Punches Multiplier", 0, 5, FeatureState.ExtraPunches, true, 8, function(val)
+    FeatureState.ExtraPunches = val
+end)
+
+createSectionHeader("COMBAT", "ATTACK MODIFIERS", 9)
+createToggle("COMBAT", "Custom Punch Speed", FeatureState.PunchSpeed, false, 10, function(val)
+    FeatureState.PunchSpeed = val
+    updateAnimationSpeeds()
+end)
+createSlider("COMBAT", "Punch Speed Value", 0.5, 5, FeatureState.PunchSpeedValue, false, 11, function(val)
+    FeatureState.PunchSpeedValue = val
+    updateAnimationSpeeds()
+end)
+createToggle("COMBAT", "No Attack Delay", FeatureState.NoAttackDelay, false, 12, function(val)
+    FeatureState.NoAttackDelay = val
+    updateAnimationSpeeds()
+end)
+
+createSectionHeader("COMBAT", "KILL AURA", 13)
+createToggle("COMBAT", "Enable Kill Aura", FeatureState.KillAura, false, 14, function(val)
+    FeatureState.KillAura = val
+end)
+createSlider("COMBAT", "Aura Range", 5, 30, FeatureState.KARange, false, 15, function(val)
+    FeatureState.KARange = val
+end)
+createToggle("COMBAT", "Target Lowest Health", FeatureState.KALowestHealth, false, 16, function(val)
+    FeatureState.KALowestHealth = val
+end)
+
+-- UTILITY TAB
+createSectionHeader("UTILITY", "MOVEMENT", 1)
+createToggle("UTILITY", "Weave Glide", FeatureState.WeaveGlide, false, 2, function(val)
+    FeatureState.WeaveGlide = val
+end)
+createSlider("UTILITY", "Glide Strength", 1, 10, FeatureState.WeaveGlideStrength, false, 3, function(val)
+    FeatureState.WeaveGlideStrength = val
+end)
+
+-- SETTINGS TAB
+createSectionHeader("SETTINGS", "INTERFACE", 1)
+createKeybind("SETTINGS", "Toggle Keybind", "RightControl", 2, function(key)
+    -- Keybind mapping logic
+end)
+createActionButton("SETTINGS", "Unload Hub GUI", THEME.AccentRed, 3, function()
+    if ScreenGui then
+        ScreenGui:Destroy()
+    end
+end)
 
 switchTab("COMBAT")
